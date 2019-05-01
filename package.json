@@ -1,0 +1,16 @@
+{
+  "name": "flappy-ball",
+  "version": "1.0.0",
+  "description": "A browser game of flappy bird that sends commands to a physical board.",
+  "main": "server.js",
+  "scripts": {
+    "test": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.4",
+    "serialport": "^7.1.5",
+    "socket.io": "^2.2.0"
+  }
+}
