@@ -1,18 +1,22 @@
+const GAME_WIDTH = 800
+const GAME_HEIGHT = 800
+
 // Create our 'main' state that will contain the game
 var mainState = {
     preload: function() { 
         // Load the bird sprite
         game.load.image('bird', '/static/assets/bird.png'); 
         game.load.image('pipe', '/static/assets/pipe.png');
+        this.CANVAS_WIDTH = GAME_WIDTH
+        this.CANVAS_HEIGHT = GAME_HEIGHT
+        this.BIRD_SPEED = 165
+
+        let socket = io()
+        socket.emit('message', 'Start Game')
+        this.socket = socket
     },
     
     create: function() { 
-
-        this.CANVAS_WIDTH = 800
-        this.CANVAS_HEIGHT = 800
-        this.BIRD_SPEED = 165
-
-        this.timer = game.time.events.loop(1500, this.addRowOfPipes, this); 
 
         // Change the background color of the game to blue
         game.stage.backgroundColor = '#71c5cf';
@@ -22,6 +26,8 @@ var mainState = {
     
         // Display the bird at the position x=100 and y=245
         this.bird = game.add.sprite(0, 0, 'bird');
+        this.bird.width = 35
+        this.bird.height = 35
     
         // Add physics to the bird
         game.physics.arcade.enable(this.bird);
@@ -37,43 +43,31 @@ var mainState = {
 
         this.pipes = game.add.group(); 
 
-        this.movement = -1
+        this.score = 0;
+        this.labelScore = game.add.text(20, 20, "0", { font: "40px Arial", fill: "#ffffff" });   
 
-        let socket = io()
-        socket.emit('message', 'Start Game')
-        this.socket = socket
-
-        // this.railing = true
-        // this.railing = false
-
-        // if (!this.fbase){
-        //     this.initFirebase()       
-        // }
-
-        // this.writeToFbase(2)
-        // setTimeout( () => {
-        //     this.writeToFbase(3)
-        //     setTimeout ( () => {
-        //         this.writeToFbase(-1)
-        //     }, 3000)
-        // }, 3000)
+        this.rail();
     },
-    
+
     update: function() {
         // If the bird is out of the screen (too high or too low)
         // Call the 'restartGame' function
         if (this.bird.y < 0)
             this.bird.y = 0;
-        if (this.bird.y < 0 || this.bird.y > 800-this.bird.body.height)
-            this.bird.y = 800-this.bird.body.height
+        if (this.bird.y > this.CANVAS_HEIGHT-this.bird.body.height)
+            this.bird.y = this.CANVAS_HEIGHT-this.bird.body.height
         if (this.bird.x < 0)
             this.bird.x = 0;
-        if (this.bird.x > 800-this.bird.body.width)
-            this.bird.x = 800-this.bird.body.width;
+        if (this.bird.x > this.CANVAS_WIDTH-this.bird.body.width)
+            this.bird.x = this.CANVAS_WIDTH-this.bird.body.width;
 
         
         this.bird.body.velocity.x = 0;
         this.bird.body.velocity.y = 0;
+
+        if (this.railing) {
+            return;
+        }
 
         if (this.downKey.isDown) {
             this.moveDown();
@@ -93,6 +87,9 @@ var mainState = {
         else {
             this.stop();
         }
+
+        game.physics.arcade.overlap(this.bird, this.pipes, this.restartGame, null, this);
+
     },
 
     moveUp: function() {
@@ -117,7 +114,22 @@ var mainState = {
     },
 
     stop: function() {
-        this.socket.emit('message', '-1')   
+        this.socket.emit('message', '0')   
+    },
+
+    rail: function() {
+        this.railing = true
+        this.socket.emit('message', '2')
+        this.labelScore.text = "Calibrating..."
+        setTimeout( () => {
+            this.socket.emit('message', '3')
+            setTimeout ( () => {
+                this.socket.emit('message', '0')
+                this.railing = false
+                this.timer = game.time.events.loop(3000, this.addRowOfPipes, this); 
+                this.labelScore.text = "Begin!"
+            }, 1000)
+        }, 1000)                
     },
 
     // Restart the game
@@ -153,7 +165,10 @@ var mainState = {
         // With one big hole at position 'hole' and 'hole + 1'
         for (var i = 0; i < 16; i++)
             if (i != hole && i != hole + 1) 
-                this.addOnePipe(this.CANVAS_HEIGHT, i * 60 + 20);   
+                this.addOnePipe(this.CANVAS_HEIGHT, i * 60 + 20);  
+                
+        this.score += 1;
+        this.labelScore.text = this.score;  
     },   
     
 
@@ -188,7 +203,8 @@ var mainState = {
     }
 };
 
-var game = new Phaser.Game(mainState.CANVAS_WIDTH, mainState.CANVAS_HEIGHT);
+var game = new Phaser.Game(GAME_WIDTH, GAME_HEIGHT);
+
 
 // Add the 'mainState' and call it 'main'
 game.state.add('main', mainState); 

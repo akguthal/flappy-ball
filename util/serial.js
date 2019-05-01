@@ -9,8 +9,4 @@ port.on("open", () => {
   console.log('serial port open');
 });
 
-parser.on('data', data =>{
-  console.log('got word from arduino:', data);
-});
-
 module.exports = { port, parser }

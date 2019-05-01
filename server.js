@@ -3,7 +3,7 @@ let express = require('express');
 let http = require('http');
 let path = require('path');
 let socketIO = require('socket.io');
-// let serial = require('./util/serial')
+let serial = require('./util/serial')
 
 let app = express();
 let server = http.Server(app);
@@ -25,12 +25,15 @@ server.listen(5000, function() {
 // Write all socket messages to the Arduino
 io.on('connection', function(socket) {
   socket.on('message', function(data) {
-    // serial.port.write(data, (err) => {
-    //     if (err) {
-    //       return console.log('Error on write: ', err.message);
-    //     }
-    //     console.log(data);
-    // });
-    console.log(data);
+    serial.port.write(data, (err) => {
+        if (err) {
+          return console.log('Error on write: ', err.message);
+        }
+        // console.log(data);
+    });
   })
+});
+
+serial.parser.on('data', data =>{
+  console.log('Arduino: ', data);
 });
