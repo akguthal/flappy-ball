@@ -4,7 +4,8 @@
   "description": "A browser game of flappy bird that sends commands to a physical board.",
   "main": "server.js",
   "scripts": {
-    "test": "node server.js"
+    "test": "node server.js",
+    "dev": "node server.js"
   },
   "author": "",
   "license": "ISC",

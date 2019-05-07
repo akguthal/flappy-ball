@@ -1,19 +1,19 @@
-const GAME_WIDTH = 800
-const GAME_HEIGHT = 800
-
 // Create our 'main' state that will contain the game
 var mainState = {
     preload: function() { 
         // Load the bird sprite
-        game.load.image('bird', '/static/assets/bird.png'); 
+        // game.load.image('bird', '/static/assets/transparent.png'); 
+        game.load.image('bird', BIRD_SPRITE);
         game.load.image('pipe', '/static/assets/pipe.png');
-        this.CANVAS_WIDTH = GAME_WIDTH
-        this.CANVAS_HEIGHT = GAME_HEIGHT
-        this.BIRD_SPEED = 165
+        this.CANVAS_WIDTH = game.width
+        this.CANVAS_HEIGHT = game.height
+        this.BIRD_SPEED = 0.2025 * game.width
 
         let socket = io()
         socket.emit('message', 'Start Game')
         this.socket = socket
+
+        // game.scale.scaleMode = Phaser.ScaleManager.RESIZE;
     },
     
     create: function() { 
@@ -54,12 +54,12 @@ var mainState = {
         // Call the 'restartGame' function
         if (this.bird.y < 0)
             this.bird.y = 0;
-        if (this.bird.y > this.CANVAS_HEIGHT-this.bird.body.height)
-            this.bird.y = this.CANVAS_HEIGHT-this.bird.body.height
+        if (this.bird.y > game.height-this.bird.body.height)
+            this.bird.y = game.height-this.bird.body.height
         if (this.bird.x < 0)
             this.bird.x = 0;
-        if (this.bird.x > this.CANVAS_WIDTH-this.bird.body.width)
-            this.bird.x = this.CANVAS_WIDTH-this.bird.body.width;
+        if (this.bird.x > game.width-this.bird.body.width)
+            this.bird.x = game.width-this.bird.body.width;
 
         
         this.bird.body.velocity.x = 0;
@@ -69,7 +69,23 @@ var mainState = {
             return;
         }
 
-        if (this.downKey.isDown) {
+        if (this.upKey.isDown && this.rightKey.isDown) {
+            this.moveUpRight();
+        }
+
+        else if (this.upKey.isDown && this.leftKey.isDown) {
+            this.moveUpLeft();
+        }
+
+        else if (this.downKey.isDown && this.rightKey.isDown) {
+            this.moveDownRight();
+        }
+
+        else if (this.downKey.isDown && this.leftKey.isDown) {
+            this.moveDownLeft();
+        }
+
+        else if (this.downKey.isDown) {
             this.moveDown();
         }
     
@@ -84,11 +100,24 @@ var mainState = {
         else if (this.rightKey.isDown) {
             this.moveRight();
         }
+
         else {
             this.stop();
         }
 
         game.physics.arcade.overlap(this.bird, this.pipes, this.restartGame, null, this);
+
+    },
+
+
+    moveRight: function() {
+        this.bird.body.velocity.x = this.BIRD_SPEED
+        this.socket.emit('message', '1')
+    },
+
+    moveLeft: function() {
+        this.bird.body.velocity.x = -this.BIRD_SPEED
+        this.socket.emit('message', '2')
 
     },
 
@@ -102,15 +131,28 @@ var mainState = {
         this.socket.emit('message', '4')  
     },
 
-    moveLeft: function() {
-        this.bird.body.velocity.x = -this.BIRD_SPEED
-        this.socket.emit('message', '2')
-
+    moveUpRight: function() {
+        this.bird.body.velocity.x = this.BIRD_SPEED
+        this.bird.body.velocity.y = -this.BIRD_SPEED
+        this.socket.emit('message', '5')
     },
 
-    moveRight: function() {
+    moveUpLeft: function() {
+        this.bird.body.velocity.x = -this.BIRD_SPEED
+        this.bird.body.velocity.y = -this.BIRD_SPEED
+        this.socket.emit('message', '6')
+    },
+
+    moveDownRight: function() {
         this.bird.body.velocity.x = this.BIRD_SPEED
-        this.socket.emit('message', '1')
+        this.bird.body.velocity.y = this.BIRD_SPEED
+        this.socket.emit('message', '7')
+    },
+
+    moveDownLeft: function() {
+        this.bird.body.velocity.x = -this.BIRD_SPEED
+        this.bird.body.velocity.y = this.BIRD_SPEED
+        this.socket.emit('message', '8')
     },
 
     stop: function() {
@@ -119,17 +161,26 @@ var mainState = {
 
     rail: function() {
         this.railing = true
-        this.socket.emit('message', '2')
+        // this.socket.emit('message', '2')
+        // this.labelScore.text = "Calibrating..."
+        // setTimeout( () => {
+        //     this.socket.emit('message', '3')
+        //     setTimeout ( () => {
+        //         this.socket.emit('message', '0')
+        //         this.railing = false
+        //         this.timer = game.time.events.loop(3000, this.addRowOfPipes, this); 
+        //         this.labelScore.text = "Begin!"
+        //     }, 5000)
+        // }, 5000)   
+        
+        this.socket.emit('message', '6')
         this.labelScore.text = "Calibrating..."
         setTimeout( () => {
-            this.socket.emit('message', '3')
-            setTimeout ( () => {
-                this.socket.emit('message', '0')
-                this.railing = false
-                this.timer = game.time.events.loop(3000, this.addRowOfPipes, this); 
-                this.labelScore.text = "Begin!"
-            }, 1000)
-        }, 1000)                
+            this.socket.emit('message', '0')
+            this.railing = false
+            this.timer = game.time.events.loop(3000, this.addRowOfPipes, this); 
+            this.labelScore.text = "Begin!"
+        }, 5000)        
     },
 
     // Restart the game
@@ -149,7 +200,7 @@ var mainState = {
         game.physics.arcade.enable(pipe);
     
         // Add velocity to the pipe to make it move left
-        pipe.body.velocity.x = -200; 
+        pipe.body.velocity.x = -(0.25 * game.width); 
     
         // Automatically kill the pipe when it's no longer visible 
         pipe.checkWorldBounds = true;
@@ -165,49 +216,46 @@ var mainState = {
         // With one big hole at position 'hole' and 'hole + 1'
         for (var i = 0; i < 16; i++)
             if (i != hole && i != hole + 1) 
-                this.addOnePipe(this.CANVAS_HEIGHT, i * 60 + 20);  
+                this.addOnePipe(game.width, i * 60 + 20);  
                 
         this.score += 1;
         this.labelScore.text = this.score;  
     },   
-    
 
-    
-    /*
-        OLD FIREBASE FUNCTIONS
-    */
-    initFirebase: function() {
-        // Initialize Firebase
-        let config = {
-            apiKey: "AIzaSyDFxK5nICfcDDYsfrXvvKy8_YxVFvLYx7w",
-            authDomain: "physical-pacman-digital-maze.firebaseapp.com",
-            databaseURL: "https://physical-pacman-digital-maze.firebaseio.com",
-            projectId: "physical-pacman-digital-maze",
-            storageBucket: "physical-pacman-digital-maze.appspot.com",
-            messagingSenderId: "836534928022"
-        };
-        this.fbase = firebase.initializeApp(config);
-        this.fbase.database().ref("/").set({ //initialize light to false in firebase
-            move: 0
-        });
-
-        window.onkeyup = (event) => {
-            window.setTimeout(() => this.fbase.database().ref("/").set({ move: -1 }), 50);
-        }         
-    },
-
-    writeToFbase: function(moveNum) {
-        this.fbase.database().ref("/").set({
-            move: moveNum
-        })
-    }
 };
 
-var game = new Phaser.Game(GAME_WIDTH, GAME_HEIGHT);
+window.onresize = (e) => {
+    let size = Math.min(window.innerWidth, window.innerHeight) * 0.9
+    game.scale.setGameSize(size, size)
+    game.state.start('main')
+}
 
+toggleTransparent = () => {
+    if (BIRD_SPRITE === '/static/assets/bird.png') {
+        BIRD_SPRITE = '/static/assets/transparent.png'
+    }
+    else {
+        BIRD_SPRITE = '/static/assets/bird.png'
+    }
+    game.state.start('main')
+    console.log("toggling")
+}
+
+
+let BIRD_SPRITE = '/static/assets/bird.png'
+
+let size = Math.min(window.innerWidth, window.innerHeight) * 0.9
+
+let game = new Phaser.Game(size, size);
 
 // Add the 'mainState' and call it 'main'
 game.state.add('main', mainState); 
 
 // Start the state to actually start the game
 game.state.start('main');
+
+window.onload = () => {
+    document.getElementById("transparent-mode").onclick = toggleTransparent
+}
+
+
